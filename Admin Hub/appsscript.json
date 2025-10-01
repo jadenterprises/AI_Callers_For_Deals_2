@@ -1,0 +1,22 @@
+{
+  "timeZone": "America/Chicago",
+  "dependencies": {
+    "enabledAdvancedServices": [{
+      "userSymbol": "Sheets",
+      "serviceId": "sheets",
+      "version": "v4"
+    }],
+    "libraries": [{
+      "userSymbol": "OutboundLib",
+      "libraryId": "14fjQkeRpDdgvNh_9XPhegZKI-jJ0epbchiL8oj2sbGmGU_s5GOQheuO-",
+      "version": "0"
+    }]
+  },
+  "webapp": {
+    "access": "ANYONE_ANONYMOUS",
+    "executeAs": "USER_DEPLOYING"
+  },
+  "exceptionLogging": "STACKDRIVER",
+  "oauthScopes": ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/script.external_request", "https://www.googleapis.com/auth/cloud-platform", "https://www.googleapis.com/auth/drive", "https://www.googleapis.com/auth/script.scriptapp", "https://www.googleapis.com/auth/drive.readonly", "https://www.googleapis.com/auth/userinfo.email"],
+  "runtimeVersion": "V8"
+}

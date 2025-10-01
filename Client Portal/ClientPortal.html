@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AI Calling Dashboard</title>
+  <style>
+    :root{
+      --bg:#fafafa;
+      --card:#ffffff;
+      --ink:#111;
+      --muted:#666;
+      --accent:#12b76a;     /* green run buttons */
+      --accentText:#fff;
+      --blue:#0b63ff;       /* download buttons */
+      --blueBg:#eaf3ff;
+      --blueBorder:#cfe0ff;
+      --border:#e6e6e6;
+      --shadow:0 1px 2px rgba(0,0,0,.06), 0 4px 14px rgba(0,0,0,.05);
+      --maxw:1100px;
+      
+    }
+    html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font:14px/1.5 system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";}
+    .wrap{max-width:var(--maxw);margin:0 auto;padding:16px 16px 60px;}
+
+    .header{ text-align:center; font-weight:800; color:#000; font-size:28px; margin:6px 0 16px; }
+
+    /* Top zone: left stack (Credits + Calls Made) and two rows of run pills */
+    .top-zone{ display:grid; gap:12px; align-items:stretch; }
+    @media (min-width:860px){
+      .top-zone{ grid-template-columns: 210px 1fr; }
+    }
+    @media (max-width:859px){
+      .top-zone{ grid-template-columns: 1fr; }
+    }
+    .left-stack{ display:flex; flex-direction:column; gap:12px; }
+    .run-row-pills{ display:grid; grid-template-columns: repeat(4, minmax(120px,1fr)); gap:12px; }
+    @media (max-width:520px){
+      .run-row-pills{ grid-template-columns: repeat(2, minmax(120px,1fr)); }
+    }
+
+    .pill{ background:var(--card); border:1px solid var(--border); border-radius:10px; padding:12px 16px; box-shadow:var(--shadow); text-align:center; }
+    .pill .label{ font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.4px;}
+    .pill .value{ font-size:22px; font-weight:700; margin-top:4px;}
+
+    .compact-row{ display:grid; gap:12px; margin:10px 0 8px; }
+    @media (min-width:800px){
+      .compact-row{ grid-template-columns:1fr 260px 1fr; }
+    }
+    @media (max-width:799px){
+      .compact-row{ grid-template-columns:1fr; }
+    }
+
+    .card{ background:var(--card); border:1px solid var(--border); border-radius:12px; padding:12px; box-shadow:var(--shadow); }
+    .card h3{ margin:0 0 8px; font-size:14px; font-weight:700; }
+    .row{ display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+    .row label{ font-size:12px; color:var(--muted); min-width:180px; }
+    .row input[type="number"]{ width:120px; padding:6px 8px; border:1px solid var(--border); border-radius:8px; }
+    .hint{ font-size:12px; color:var(--muted); margin-top:6px; }
+
+    .mid-badge{ display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; }
+    .mid-badge .title{ font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; }
+    .mid-badge .value{ font-size:28px; font-weight:800; margin-top:4px; }
+
+    /* Results row: 4 across */
+    .results-row{ display:grid; gap:12px; grid-template-columns: repeat(4, minmax(180px,1fr)); margin:10px 0 18px; }
+    @media (max-width:900px){ .results-row{ grid-template-columns: repeat(2, minmax(180px,1fr)); } }
+    @media (max-width:520px){ .results-row{ grid-template-columns: 1fr; } }
+    .result-pill{ background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px 18px; box-shadow:var(--shadow); text-align:center; }
+    .result-pill .label{ font-size:13px; color:var(--muted); text-transform:uppercase; letter-spacing:.4px;}
+    .result-pill .value{ font-size:32px; font-weight:800; margin-top:6px;}
+
+    .center{ text-align:center; }
+    .btn{ appearance:none; border:none; border-radius:8px; padding:10px 16px; cursor:pointer; box-shadow:var(--shadow); background:#222; color:#fff; font-weight:700; }
+    .btn:disabled{ opacity:.6; cursor:not-allowed; }
+
+    .run-row{ display:flex; gap:12px; justify-content:center; flex-wrap:wrap; margin-bottom:12px;}
+    .btn-run{ background:var(--accent); color:var(--accentText); font-weight:800; padding:12px 18px; border:none; border-radius:10px; cursor:pointer; box-shadow:var(--shadow); }
+    .btn-run:disabled{ opacity:.5; cursor:not-allowed; }
+
+    .download-row{ display:flex; justify-content:center; gap:16px; flex-wrap:wrap; margin:12px 0 18px; }
+    .btn-link{ background:var(--blueBg); border:1px solid var(--blueBorder); padding:10px 14px; border-radius:8px; text-decoration:none; color:var(--blue); font-weight:700; box-shadow:var(--shadow); }
+
+    .upload-card{ margin:10px 0 14px; }
+    .upload-card .hint{ margin-top:0; }
+
+    .main-grid{ display:grid; grid-template-columns: 1fr 280px; gap:16px; }
+    @media (max-width:1024px){ .main-grid{ grid-template-columns:1fr; } }
+
+    .ledger{ max-width:280px; max-height:520px; overflow:auto; }
+    .table{ width:100%; border-collapse:collapse; }
+    .table th,.table td{ border-bottom:1px solid var(--border); padding:6px 8px; font-size:12px; text-align:left; white-space:nowrap; }
+    .table th{ color:var(--muted); font-weight:700; }
+    .subtle{ color:#64748b; font-size:13px; }
+
+    /* LOGIN overlay */
+    .overlay{
+      position:fixed; inset:0; background:rgba(0,0,0,.08);
+      display:flex; align-items:center; justify-content:center; z-index:9999;
+    }
+    .overlay .panel{
+      width:min(420px,92%); background:#fff; border:1px solid var(--border);
+      border-radius:12px; padding:18px; box-shadow:var(--shadow);
+    }
+    .overlay h2{ margin:0 0 10px; font-size:20px; text-align:center; }
+    .overlay input[type=password]{
+      width:100%; padding:10px; border:1px solid var(--border); border-radius:8px; margin-top:6px;
+    }
+    .overlay .actions{ display:flex; gap:8px; justify-content:center; margin-top:12px; }
+
+    /* LOADING overlay */
+    .loading {
+      position: fixed; inset: 0;
+      display: none; align-items: center; justify-content: center;
+      background: rgba(255,255,255,.85);
+      z-index: 9990;
+    }
+    .loading .panel{
+      background:#fff; border:1px solid var(--border); border-radius:12px;
+      padding:18px 22px; box-shadow:var(--shadow); text-align:center; min-width:240px;
+    }
+    .spinner{
+      width:44px; height:44px; border-radius:50%;
+      border:4px solid #e5e7eb; border-top-color: var(--accent);
+      animation: spin 1s linear infinite; margin:0 auto 10px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading .msg{ font-weight:700; }
+    .loading .sub{ color:var(--muted); font-size:12px; margin-top:4px; }
+    /* --- Mobile polish --- */
+@media (max-width: 560px) {
+  .wrap { padding: 10px 10px 48px; }
+
+  /* Top status: make pills denser and 2 columns */
+  .top-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .pill { min-width: 0; padding: 10px; }
+  .pill .label { font-size: 11px; }
+  .pill .value { font-size: 18px; }
+
+  /* Compact row cards: make each full-width */
+  .compact-row { grid-template-columns: 1fr !important; }
+  .mid-badge .value { font-size: 22px; }
+
+  /* Big results: 2 per row */
+  .results-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .result-pill { min-width: 0; padding: 12px; }
+  .result-pill .value { font-size: 26px; }
+
+  /* Run buttons: 2 per row, full width */
+  .run-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .btn-run { width: 100%; padding: 12px; }
+
+  /* Downloads: stack with full-width buttons */
+  .download-row { display: grid; grid-template-columns: 1fr; gap: 10px; }
+  .btn-link { text-align: center; }
+
+  /* Two-column main grid collapses; put ledger under everything */
+  .main-grid { display: block; }
+  .ledger { max-width: 100%; max-height: 320px; overflow: auto; margin-top: 12px; }
+}
+
+/* Small iPhones/older Android widths */
+@media (max-width: 380px) {
+  .pill .value { font-size: 16px; }
+  .result-pill .value { font-size: 22px; }
+  <meta name="theme-color" content="#ffffff">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+}
+
+  </style>
+</head>
+<body>
+
+  <!-- LOGIN -->
+  <div id="loginOverlay" class="overlay">
+    <div class="panel">
+      <h2>Client Login</h2>
+      <input id="pw" type="password" placeholder="Password" autocomplete="current-password"/>
+      <div class="actions">
+        <button class="btn" id="btnLogin">Sign In</button>
+      </div>
+      <div id="loginMsg" class="subtle" style="margin-top:8px;"></div>
+    </div>
+  </div>
+
+  <!-- LOADING -->
+  <div id="loadingLayer" class="loading">
+    <div class="panel">
+      <div class="spinner"></div>
+      <div class="msg">Loading data…</div>
+      <div class="sub">This can take up to 60 seconds.</div>
+    </div>
+  </div>
+
+  <div class="wrap" id="app">
+    <div class="header">AI Calling Dashboard</div>
+
+    <!-- Top zone: left stack and 2 rows of run pills -->
+    <div class="top-zone">
+      <div class="left-stack">
+        <div class="pill"><div class="label">Credits</div><div id="credits" class="value">–</div></div>
+        <div class="pill"><div class="label">Calls Made</div><div id="callsMade" class="value">0</div></div>
+      </div>
+      <div>
+        <div class="run-row-pills" style="margin-bottom:12px;">
+          <div class="pill"><div class="label">Run 1</div><div id="run1" class="value">0</div></div>
+          <div class="pill"><div class="label">Run 2</div><div id="run2" class="value">0</div></div>
+          <div class="pill"><div class="label">Run 3</div><div id="run3" class="value">0</div></div>
+          <div class="pill"><div class="label">Run 4</div><div id="run4" class="value">0</div></div>
+        </div>
+        <div class="run-row-pills">
+          <div class="pill"><div class="label">Run 5</div><div id="run5" class="value">0</div></div>
+          <div class="pill"><div class="label">Run 6</div><div id="run6" class="value">0</div></div>
+          <div class="pill"><div class="label">Run 7</div><div id="run7" class="value">0</div></div>
+          <div class="pill"><div class="label">Run 8</div><div id="run8" class="value">0</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Compact three-up row -->
+    <div class="compact-row">
+      <div class="card">
+        <h3>Recall Days</h3>
+        <div class="row">
+          <label for="daysNoAns">Days Till Next Call (No Answers)</label>
+          <input type="number" id="daysNoAns" min="1" max="90" />
+        </div>
+        <div class="row" style="margin-top:6px;">
+          <label for="daysAns">Days Till Next Call (Answers/Later)</label>
+          <input type="number" id="daysAns" min="1" max="120" />
+        </div>
+        <div class="hint">Defaults are 5 / 30.</div>
+      </div>
+
+      <div class="card mid-badge">
+        <div class="title">Minutes Before Next Run</div>
+        <div id="cooldownBadge" class="value">0</div>
+      </div>
+
+      <div class="card">
+        <h3>Change Run Amount</h3>
+        <div class="row">
+          <label for="runAmt">Calls per Run (100 – 1000)</label>
+          <input type="number" id="runAmt" min="100" max="1000" />
+        </div>
+        <div class="hint">Runs send up to this amount if credits &amp; leads. Default is 1,000.</div>
+      </div>
+    </div>
+
+    <!-- Main grid -->
+    <div class="main-grid">
+      <div>
+        <!-- Results: 4 across -->
+        <div class="results-row">
+          <div class="result-pill"><div class="label">Good Leads</div><div id="resGood" class="value">0</div></div>
+          <div class="result-pill"><div class="label">Good Leads For Later</div><div id="resLater" class="value">0</div></div>
+          <div class="result-pill"><div class="label">Bad Leads</div><div id="resBad" class="value">0</div></div>
+          <div class="result-pill"><div class="label">Not Interested Leads</div><div id="resNI" class="value">0</div></div>
+        </div>
+
+        <!-- Send run buttons (1–4) -->
+        <div class="run-row">
+          <button class="btn-run" id="btnRun1">Send Run 1</button>
+          <button class="btn-run" id="btnRun2">Send Run 2</button>
+          <button class="btn-run" id="btnRun3">Send Run 3</button>
+          <button class="btn-run" id="btnRun4">Send Run 4</button>
+        </div>
+        <!-- Send run buttons (5–8) -->
+        <div class="run-row">
+          <button class="btn-run" id="btnRun5">Send Run 5</button>
+          <button class="btn-run" id="btnRun6">Send Run 6</button>
+          <button class="btn-run" id="btnRun7">Send Run 7</button>
+          <button class="btn-run" id="btnRun8">Send Run 8</button>
+        </div>
+
+        <!-- Get results centered BETWEEN runs and downloads -->
+        <div class="center" style="margin:6px 0 6px;">
+          <button class="btn" id="btnGetResults">Get Call Results</button>
+          <div class="subtle" id="ingestCooldownNote" style="margin-top:6px;"></div>
+        </div>
+
+        <!-- Downloads (blue) – now call server to strip +1 -->
+        <div class="download-row">
+          <a href="#" id="dlGood"  class="btn-link">Download Good Leads (.xlsx)</a>
+          <a href="#" id="dlLater" class="btn-link">Download Good Leads For Later (.xlsx)</a>
+        </div>
+
+        <!-- Uploads -->
+        <div class="card upload-card">
+          <h3>Upload Leads</h3>
+          <div class="hint">Uploads are cleaned (+1XXXXXXXXXX phones) and deduped.</div>
+          <div class="row" style="margin-top:8px;">
+            <input type="file" id="fileInput" accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"/>
+            <button class="btn" id="btnUpload">Upload</button>
+          </div>
+          <div class="subtle" id="uploadMsg" style="margin-top:6px;"></div>
+        </div>
+      </div>
+
+      <!-- Right ledger -->
+      <div class="card ledger">
+        <h3>Credit Ledger</h3>
+        <table class="table" id="ledgerTable">
+          <thead><tr><th>Date</th><th>Calls Sent</th><th>Credits Added</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // --------- helpers ----------
+    function clamp(n, lo, hi){ return Math.max(lo, Math.min(hi, n)); }
+    function minutesLeft(ms){ return Math.max(0, Math.ceil(ms/60000)); }
+    function showLoading(message){
+      const layer = document.getElementById('loadingLayer');
+      if (!layer) return;
+      layer.style.display = 'flex';
+      if (message) layer.querySelector('.msg').textContent = message;
+    }
+    function hideLoading(){
+      const layer = document.getElementById('loadingLayer');
+      if (!layer) return;
+      layer.style.display = 'none';
+    }
+
+    // --------- login ----------
+    document.getElementById('btnLogin').onclick = function(){
+      const pw = document.getElementById('pw').value || '';
+      document.getElementById('loginMsg').textContent = 'Checking…';
+      google.script.run.withSuccessHandler(ok=>{
+        if (ok) {
+          document.getElementById('loginOverlay').style.display='none';
+          reloadState();
+        } else {
+          document.getElementById('loginMsg').textContent = 'Invalid password.';
+        }
+      }).portalAuth(pw);
+    };
+
+    // --------- state & rendering ----------
+    let cooldownDeadlineMs = 0;
+    let ingestCooldownMs   = 0;
+    let busy = false;
+    let pollingInterval = null; // NEW: Variable to manage the polling timer
+
+    function renderState(s){
+      // credits, calls made
+      document.getElementById('credits').textContent   = s.credits ?? '—';
+      document.getElementById('callsMade').textContent = s.callsMade ?? 0;
+
+      // run counts 1–8
+      document.getElementById('run1').textContent = s.run.r1 ?? 0;
+      document.getElementById('run2').textContent = s.run.r2 ?? 0;
+      document.getElementById('run3').textContent = s.run.r3 ?? 0;
+      document.getElementById('run4').textContent = s.run.r4 ?? 0;
+      document.getElementById('run5').textContent = s.run.r5 ?? 0;
+      document.getElementById('run6').textContent = s.run.r6 ?? 0;
+      document.getElementById('run7').textContent = s.run.r7 ?? 0;
+      document.getElementById('run8').textContent = s.run.r8 ?? 0;
+
+      // recall + run amount
+      document.getElementById('daysNoAns').value = s.recall.noAnswer;
+      document.getElementById('daysAns').value   = s.recall.answered;
+      document.getElementById('runAmt').value    = s.runAmount;
+
+      // results counters
+      document.getElementById('resGood').textContent  = s.results.good ?? 0;
+      document.getElementById('resLater').textContent = s.results.later ?? 0;
+      document.getElementById('resBad').textContent   = s.results.bad ?? 0;
+      document.getElementById('resNI').textContent    = s.results.notInterested ?? 0;
+
+      // cooldowns
+      const now = Date.now();
+      cooldownDeadlineMs = now + (s.cooldownSec || 0)*1000;
+      ingestCooldownMs   = now + (s.ingestCooldownSec || 0) * 1000; // Corrected this line
+      updateCooldownLabels();
+
+      // ledger
+      renderLedger(s.ledger || []);
+    }
+
+    function renderLedger(rows){
+      const tb = document.querySelector('#ledgerTable tbody');
+      tb.innerHTML = '';
+      rows.forEach(r=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${r.date||''}</td><td>${r.calls||0}</td><td>${r.added||0}</td>`;
+        tb.appendChild(tr);
+      });
+    }
+
+    function updateCooldownLabels(){
+      const now = Date.now();
+      const minsRun  = minutesLeft(cooldownDeadlineMs - now);
+      document.getElementById('cooldownBadge').textContent = minsRun > 0 ? minsRun + 1 : 0;
+
+      const ingestLabel = document.getElementById('ingestCooldownNote');
+      const minsIngest  = minutesLeft(ingestCooldownMs - now);
+      if (minsIngest > 0){
+        ingestLabel.textContent = `Get Call Results available in ~${minsIngest} minute(s).`;
+        document.getElementById('btnGetResults').disabled = true;
+      } else {
+        ingestLabel.textContent = '';
+        document.getElementById('btnGetResults').disabled = false;
+      }
+    }
+    setInterval(updateCooldownLabels, 15000);
+
+    function reloadState(){
+      showLoading('Loading data…');
+      google.script.run
+        .withSuccessHandler(s => { renderState(s); hideLoading(); })
+        .withFailureHandler(e => { hideLoading(); alert('Load failed: ' + (e && e.message ? e.message : e)); })
+        .webGetState();
+    }
+    
+    // NEW: A silent version of reloadState that doesn't show the loading overlay
+    function silentReloadState() {
+      google.script.run
+        .withSuccessHandler(renderState) // Just render the new state
+        .withFailureHandler(err => {
+          console.error('Auto-refresh failed:', err.message);
+          if (pollingInterval) clearInterval(pollingInterval); // Stop polling on error
+        })
+        .webGetState();
+    }
+
+    // NEW: Function to start and stop the polling
+    function startPollingForUpdates() {
+      // Clear any previous timer to prevent duplicates
+      if (pollingInterval) clearInterval(pollingInterval);
+
+      console.log('Starting auto-refresh poll...');
+      // Ask for new data every 30 seconds
+      pollingInterval = setInterval(silentReloadState, 30000);
+
+      // Stop polling automatically after 10 minutes
+      setTimeout(() => {
+        if (pollingInterval) {
+          clearInterval(pollingInterval);
+          pollingInterval = null;
+          console.log('Auto-refresh poll stopped.');
+        }
+      }, 10 * 60 * 1000); 
+    }
+
+
+    // --------- actions ----------
+    let liveModeInterval = null;
+
+    function setRecallDays(){
+      const noAns = clamp(parseInt(document.getElementById('daysNoAns').value||'5',10), 1, 90);
+      const ans   = clamp(parseInt(document.getElementById('daysAns').value||'30',10),   1, 120);
+      google.script.run.withSuccessHandler(()=>reloadState()).webSetRecallDays(noAns, ans);
+    }
+    function setRunAmount(){
+      const n = clamp(parseInt(document.getElementById('runAmt').value||'1000',10), 100, 1000);
+      document.getElementById('runAmt').value = n;
+      google.script.run.withSuccessHandler(()=>reloadState()).webSetRunAmount(n);
+    }
+    function disableRuns(dis){
+      ['btnRun1','btnRun2','btnRun3','btnRun4','btnRun5','btnRun6','btnRun7','btnRun8']
+        .forEach(id=> { const el=document.getElementById(id); if (el) el.disabled = dis; });
+    }
+
+    function sendRun(n){
+      if (busy) return; busy=true; disableRuns(true);
+      showLoading('Queuing calls…');
+      google.script.run
+        .withSuccessHandler((res)=>{
+          hideLoading(); busy=false; disableRuns(false);
+          // This handles the IMMEDIATE update of credits, runs, and the 21-min cooldown
+          reloadState(); 
+          alert(res && res.message ? res.message : 'Run submitted.');
+          // This starts the new "live mode" polling for results
+          startLiveModePolling();
+        })
+        .withFailureHandler(err=>{
+          hideLoading(); busy=false; disableRuns(false);
+          alert('Send failed: ' + (err && err.message ? err.message : err));
+        })
+        .webSendRun(n);
+    }
+    
+    /**
+     * Triggers the Hub to ingest results from GCS.
+     * @param {boolean} isPolling - If true, suppresses alerts on cooldown errors.
+     */
+    function getResults(isPolling) {
+      if (!isPolling) showLoading('Refreshing results…');
+      google.script.run
+        .withSuccessHandler(res=>{
+          if (!isPolling) hideLoading();
+          // On success, always reload the state to update counters
+          reloadState();
+          if (!isPolling && res && res.message) alert(res.message);
+        })
+        .withFailureHandler(e=>{
+          if (!isPolling) {
+            hideLoading();
+            alert('Get Results failed: ' + (e && e.message ? e.message : e));
+          } else {
+            // Log polling errors to the console instead of showing alerts
+            console.log('Polling for results skipped due to cooldown or error:', e.message);
+          }
+        })
+        .webGetCallResults();
+    }
+
+    /**
+     * Starts a 90-minute "live mode" to automatically refresh results.
+     */
+    function startLiveModePolling() {
+      // Clear any previous timers to ensure only one is running
+      if (liveModeInterval) clearInterval(liveModeInterval);
+      
+      console.log('Live Mode Activated. First result check in 3 minutes.');
+
+      // 1. Initial delay of 3 minutes before the first check
+      setTimeout(() => {
+        console.log('Live Mode: Performing first result check.');
+        getResults(true); // 'true' for silent polling
+
+        // 2. After the first check, poll every 5 minutes
+        liveModeInterval = setInterval(() => {
+          console.log('Live Mode: Performing 5-minute result check.');
+          getResults(true);
+        }, 5 * 60 * 1000); // 5 minutes
+
+      }, 3 * 60 * 1000); // 3 minutes
+
+      // 3. Stop all polling after 90 minutes
+      setTimeout(() => {
+        if (liveModeInterval) {
+          clearInterval(liveModeInterval);
+          liveModeInterval = null;
+          console.log('Live Mode Deactivated after 90 minutes.');
+        }
+      }, 90 * 60 * 1000); // 90 minutes
+    }
+
+
+    function downloadXlsx(which){
+      showLoading('Preparing download…');
+      google.script.run
+        .withSuccessHandler(r=>{
+          hideLoading();
+          if (r && r.url) window.open(r.url,'_blank','noopener');
+          else alert('Export failed.');
+        })
+        .withFailureHandler(e=>{
+          hideLoading();
+          alert('Export failed: ' + (e && e.message ? e.message : e));
+        })
+        .exportResultsXlsx(which);
+    }
+
+    function doUpload(){
+      const f = document.getElementById('fileInput').files[0];
+      if (!f){ document.getElementById('uploadMsg').textContent='Please choose a CSV or XLSX file.'; return; }
+
+      document.getElementById('uploadMsg').textContent = 'Uploading file to server...';
+      showLoading('Uploading file...');
+
+      const reader = new FileReader();
+      reader.onload = function(e){
+        const dataUrl = e.target.result;
+
+        // STAGE 1: Send file to server for staging in Drive
+        google.script.run
+          .withSuccessHandler((stageResult)=>{
+            if (!stageResult || !stageResult.ok) {
+                hideLoading();
+                document.getElementById('uploadMsg').textContent = 'Upload failed during staging: ' + (stageResult.error || 'Unknown error');
+                return;
+            }
+
+            // STAGE 2: Process the staged file using its ID
+            document.getElementById('uploadMsg').textContent = 'File uploaded. Now processing leads...';
+            showLoading('Processing leads...');
+
+            google.script.run
+              .withSuccessHandler((processResult)=>{
+                hideLoading();
+                document.getElementById('uploadMsg').textContent = processResult || 'Upload complete.';
+                reloadState(); // Refresh the dashboard state
+              })
+              .withFailureHandler((err)=>{
+                hideLoading();
+                document.getElementById('uploadMsg').textContent = 'Processing failed: '+(err && err.message ? err.message : err);
+              })
+              .webUploadLeads({ fileId: stageResult.fileId }); // Pass the fileId
+          })
+          .withFailureHandler((err)=>{
+            hideLoading();
+            document.getElementById('uploadMsg').textContent = 'Upload failed: '+(err && err.message ? err.message : err);
+          })
+          .webStageFile({name:f.name, dataUrl:dataUrl}); // Call the new staging function
+      };
+      reader.readAsDataURL(f);
+    }
+
+    // --------- events ----------
+    document.getElementById('btnRun1').onclick = ()=>sendRun(1);
+    document.getElementById('btnRun2').onclick = ()=>sendRun(2);
+    document.getElementById('btnRun3').onclick = ()=>sendRun(3);
+    document.getElementById('btnRun4').onclick = ()=>sendRun(4);
+    document.getElementById('btnRun5').onclick = ()=>sendRun(5);
+    document.getElementById('btnRun6').onclick = ()=>sendRun(6);
+    document.getElementById('btnRun7').onclick = ()=>sendRun(7);
+    document.getElementById('btnRun8').onclick = ()=>sendRun(8);
+
+    document.getElementById('btnGetResults').onclick = () => getResults(false);
+    document.getElementById('daysNoAns').onchange = setRecallDays;
+    document.getElementById('daysAns').onchange   = setRecallDays;
+    document.getElementById('runAmt').onchange    = setRunAmount;
+    document.getElementById('btnUpload').onclick  = doUpload;
+
+    document.getElementById('dlGood').onclick  = (e)=>{ e.preventDefault(); downloadXlsx('good');  };
+    document.getElementById('dlLater').onclick = (e)=>{ e.preventDefault(); downloadXlsx('later'); };
+</script>
+</body>
+</html>
